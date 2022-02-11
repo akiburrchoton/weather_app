@@ -1,64 +1,4 @@
-// ** API Config
-
-const apiKey = "99d68515dd63d550f11264a739893c17";
-const cityName = "sydney";
-const apiEndPoint = `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}&units=metric`;
-
-
-
-// ** Fetching data for Weather
-
-const fetchWeatherData = async (url) => {
-  const response = await fetch(url);
-  const data = await response.json();
-
-  renderWeather(data);
-  fetchForecastData(data);
-};
-
-
-
-// ** Fetching data for Forecast
-
-const fetchForecastData = async (apiData) => {
-  const endPoint = `https://api.openweathermap.org/data/2.5/forecast?id=1185241&appid=${apiKey}&units=metric`;
-
-  const response = await fetch(endPoint);
-  const data = await response.json();
-
-  const list = data.list;
-  const forecastTemp = [];
-
-  list.forEach((obj) => {
-    const date = new Date(obj.dt_txt);
-    const hour = date.getHours();
-
-    if (hour == 12) {
-      forecastTemp.push(obj);
-    }
-  });
-  
-  renderForecast(forecastTemp);
-};
-
-
-// ** Search Function
-
-const input = document.querySelector('.weather__search');
-
-input.addEventListener('keydown', (e) => {
-    const cityName = input.value.trim();
-    const apiEndPoint = `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}&units=metric`;
-    
-    if(e.keyCode == 13){
-        fetchWeatherData(apiEndPoint);
-    }
-});
-
-
-
-// ** Catching DOMs
-
+// ** Grabing DOMs
 const city = document.querySelector(".weather__city");
 const day = document.querySelector(".weather__day");
 const humidity = document.querySelector(
@@ -71,10 +11,42 @@ const pressure = document.querySelector(
 const weatherImg = document.querySelector(".weather__image");
 const temp = document.querySelector(".weather__temperature > .value");
 const forecast = document.querySelector(".weather__forecast");
+const input = document.querySelector(".weather__search");
+const suggestions = document.querySelector("#suggestions");
 
+// ** API Config
+const apiKey = "99d68515dd63d550f11264a739893c17";
+const cityName = "sydney";
+const apiEndPoint = `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}&units=metric`;
 
-// ** Render Weather Data
+// ** Fetching City Name Suggestion
+const fetchCityName = async (value) => {
+  const endPoint = `https://api.teleport.org/api/cities/?search=${value}&limit=6`;
+  const response = await fetch(endPoint);
+  const data = await response.json();
 
+  renderCitySuggestion(data._embedded["city:search-results"]);
+};
+
+// ** Rendering City Name Suggestion in Searchbar
+const renderCitySuggestion = (data) => {
+  suggestions.innerHTML = "";
+
+  data.forEach((loc) => {
+    suggestions.innerHTML += `<option value="${loc.matching_full_name}"></option>`;
+  });
+};
+
+// ** Fetching data for Weather
+const fetchWeatherData = async (url) => {
+  const response = await fetch(url);
+  const data = await response.json();
+
+  renderWeather(data);
+  fetchForecastData(data);
+};
+
+// ** Rendering Weather Data
 const renderWeather = (data) => {
   city.textContent = data.name;
   day.textContent = findDay(data.dt);
@@ -93,16 +65,37 @@ const renderWeather = (data) => {
   }`;
 };
 
+// ** Fetching data for Forecast
+const fetchForecastData = async (apiData) => {
+  const endPoint = `https://api.openweathermap.org/data/2.5/forecast?id=${apiData.id}&appid=${apiKey}&units=metric`;
 
+  const response = await fetch(endPoint);
+  const data = await response.json();
 
-// ** Render Forecast Data
+  const list = data.list;
+  const forecastTemp = [];
 
+  list.forEach((obj) => {
+    const date = new Date(obj.dt_txt);
+    const hour = date.getHours();
+
+    if (hour == 12) {
+      forecastTemp.push(obj);
+    }
+  });
+
+  renderForecast(forecastTemp);
+};
+
+// ** Rendering Forecast Data
 const renderForecast = (data) => {
   forecast.innerHTML = "";
-  
+
   data.forEach((obj) => {
     const temp = obj.main.temp;
-    const dayName = new Date(obj.dt_txt).toLocaleDateString("en-En", {weekday: "long"});
+    const dayName = new Date(obj.dt_txt).toLocaleDateString("en-En", {
+      weekday: "long",
+    });
     const icon = `https://openweathermap.org/img/wn/${obj.weather[0].icon}@2x.png`;
     const desc = obj.weather[0].description;
 
@@ -120,29 +113,36 @@ const renderForecast = (data) => {
   });
 };
 
+// ** Search Function (Eventlistener)
+input.addEventListener("keydown", (e) => {
+  const inputVal = input.value;
+  fetchCityName(inputVal);
 
+  let cityName;
+
+  if (inputVal.includes(",")) {
+    cityName =
+      inputVal.slice(0, inputVal.indexOf(",")) +
+      inputVal.slice(inputVal.lastIndexOf(","));
+  }
+
+  const apiEndPoint = `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}&units=metric`;
+
+  if (e.keyCode == 13) {
+    fetchWeatherData(apiEndPoint);
+  }
+});
 
 // ** Find the day
-
 const findDay = (value) => {
-  const date = new Date();
-  const weekday = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
+  const day = new Date(value * 1000).toLocaleDateString("en-En", {
+    weekday: "long",
+  });
 
-  return weekday[date.getUTCDay()];
+  return day;
 };
 
-
-
 // ** Get direction function to calculate the wind direction
-
 const getDirection = (angle) => {
   const directions = [
     "North",
@@ -159,8 +159,5 @@ const getDirection = (angle) => {
   return directions[index];
 };
 
-
-
 // ** Initialising the App
-
 fetchWeatherData(apiEndPoint);
